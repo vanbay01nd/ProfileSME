@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Báo Giá Vay Vốn Doanh Nghiệp – VPBank SME</title>
+  <meta name="description" content="Báo giá khoản vay vốn doanh nghiệp SME cá nhân hóa từ VPBank – Kèm lịch trả nợ chi tiết hàng tháng." />
+  <meta name="robots" content="noindex, nofollow" />
+
+  <!-- TAILWIND -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            vpgreen: { DEFAULT:'#004a2f', light:'#006e3c', bright:'#00a550' },
+            vpgold:  { DEFAULT:'#c9a84c', light:'#e8c96d', dark:'#a07a30' },
+          },
+          fontFamily: { inter: ['Inter','sans-serif'] }
+        }
+      }
+    }
+  </script>
+
+  <!-- FONTS & ICONS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <!-- html2pdf & SheetJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <!-- CUSTOM CSS -->
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    /* Styles đặc biệt cho trang báo giá */
+    .quote-container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .quote-header {
+      background: linear-gradient(135deg, #004a2f 0%, #006e3c 60%, #005a35 100%);
+      border-radius: 20px 20px 0 0;
+      padding: 2.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .quote-header::before {
+      content: '';
+      position: absolute;
+      top: -40%;
+      right: -10%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    .quote-watermark {
+      position: absolute;
+      bottom: -20px;
+      right: 20px;
+      font-size: 8rem;
+      font-weight: 900;
+      color: rgba(255,255,255,0.04);
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .info-card {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+    }
+
+    .amortization-table th {
+      background: #004a2f;
+      color: white;
+      padding: 10px 12px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-align: right;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+
+    .amortization-table th:first-child { text-align: center; }
+    .amortization-table th:nth-child(2) { text-align: left; }
+
+    .amortization-table td {
+      padding: 9px 12px;
+      font-size: 0.82rem;
+      border-bottom: 1px solid #f0f4f0;
+      text-align: right;
+      color: #374151;
+      white-space: nowrap;
+    }
+
+    .amortization-table td:first-child { text-align: center; font-weight: 600; color: #004a2f; }
+    .amortization-table td:nth-child(2) { text-align: left; }
+
+    .amortization-table tr:hover td { background: rgba(0,165,80,0.04); }
+
+    .amortization-table .rate-change-row td {
+      background: rgba(201,168,76,0.08) !important;
+      color: #a07a30;
+      font-weight: 600;
+    }
+
+    .amortization-table tfoot td {
+      background: rgba(0,74,47,0.07);
+      font-weight: 800;
+      color: #004a2f;
+      border-top: 2px solid #004a2f;
+      font-size: 0.85rem;
+    }
+
+    /* In PDF animation */
+    @keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+    .spin-icon { animation: spin 1s linear infinite; }
+
+    /* Print styles cho quote */
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; }
+      .quote-container { max-width: 100%; }
+      .amortization-table { font-size: 0.7rem; }
+      .amortization-table th, .amortization-table td { padding: 5px 8px; }
+    }
+  </style>
+</head>
+<body class="font-inter bg-gray-100 min-h-screen py-8">
+
+<!-- Back Button -->
+<div class="max-w-4xl mx-auto px-4 mb-4 no-print">
+  <a href="index.html" class="inline-flex items-center gap-2 text-vpgreen-DEFAULT hover:text-vpgreen-bright font-medium text-sm transition-colors">
+    <i class="fas fa-arrow-left"></i> Quay lại trang chủ
+  </a>
+</div>
+
+<!-- ============================
+     QUOTE DOCUMENT
+     Phần này sẽ được xuất PDF
+     ============================ -->
+<div class="quote-container px-4" id="quote-document">
+
+  <!-- HEADER -->
+  <div class="quote-header">
+    <div class="quote-watermark">VPBank</div>
+
+    <!-- Logo & Bank Info -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 relative z-10">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 bg-vpgold rounded-xl flex items-center justify-center font-black text-vpgreen-DEFAULT text-2xl flex-shrink-0">V</div>
+        <div>
+          <div class="text-white font-black text-xl tracking-tight">VPBank SME Portal</div>
+          <div class="text-vpgold-light text-xs">Vietnam Prosperity Joint Stock Commercial Bank</div>
+        </div>
+      </div>
+      <div class="text-right">
+        <div class="text-white/60 text-xs">Chuyên viên phụ trách</div>
+        <div class="text-white font-bold">Nguyễn Văn Bẩy</div>
+        <div class="text-vpgold-light text-sm">0876.680.001 | Baynv@vpbank.com.vn</div>
+      </div>
+    </div>
+
+    <!-- Title -->
+    <div class="text-center mb-6 relative z-10">
+      <div class="inline-flex items-center gap-2 bg-vpgold/20 border border-vpgold/30 rounded-full px-4 py-1 text-vpgold-light text-xs font-semibold mb-3">
+        <i class="fas fa-file-contract text-xs"></i> BÁO GIÁ KHOẢN VAY VỐN DOANH NGHIỆP
+      </div>
+      <h1 class="text-3xl font-black text-white mb-2">
+        Kính gửi: <span class="text-vpgold-light" id="quote-company-name">Doanh nghiệp</span>
+      </h1>
+      <p class="text-white/70 text-sm" id="quote-greeting">Báo giá khoản vay vốn SME tại VPBank theo đề xuất của Chuyên viên</p>
+    </div>
+
+    <!-- Key Loan Info Grid -->
+    <div class="info-grid relative z-10">
+      <div class="info-card">
+        <div class="text-vpgold-light text-xs font-semibold mb-1"><i class="fas fa-coins mr-1"></i>Số tiền vay</div>
+        <div class="text-white font-black text-xl" id="q-display-amount">–</div>
+      </div>
+      <div class="info-card">
+        <div class="text-vpgold-light text-xs font-semibold mb-1"><i class="fas fa-percent mr-1"></i>Lãi suất ưu đãi</div>
+        <div class="text-white font-black text-xl" id="q-display-rate1">–</div>
+        <div class="text-white/50 text-xs" id="q-display-period1">trong – tháng đầu</div>
+      </div>
+      <div class="info-card">
+        <div class="text-vpgold-light text-xs font-semibold mb-1"><i class="fas fa-chart-line mr-1"></i>Lãi suất sau ưu đãi</div>
+        <div class="text-white font-black text-xl" id="q-display-rate2">–</div>
+      </div>
+      <div class="info-card">
+        <div class="text-vpgold-light text-xs font-semibold mb-1"><i class="fas fa-calendar-alt mr-1"></i>Thời hạn vay</div>
+        <div class="text-white font-black text-xl" id="q-display-total">–</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="bg-white rounded-b-2xl shadow-lg overflow-hidden">
+
+    <!-- Summary Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 border-b border-gray-100">
+      <div class="p-4 text-center">
+        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">Kỳ hạn gốc/tháng</div>
+        <div class="text-lg font-black text-vpgreen-DEFAULT" id="q-monthly-principal">–</div>
+      </div>
+      <div class="p-4 text-center">
+        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">Lãi tháng ưu đãi</div>
+        <div class="text-lg font-black text-vpgreen-bright" id="q-interest-promo">–</div>
+      </div>
+      <div class="p-4 text-center">
+        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">Tổng tiền trả (cả kỳ)</div>
+        <div class="text-lg font-black text-vpgold-dark" id="q-total-payment">–</div>
+      </div>
+      <div class="p-4 text-center">
+        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">Tổng lãi phải trả</div>
+        <div class="text-lg font-black text-red-500" id="q-total-interest">–</div>
+      </div>
+    </div>
+
+    <!-- Note section -->
+    <div id="q-note-section" class="hidden mx-6 mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+      <div class="text-blue-700 text-sm font-semibold mb-1"><i class="fas fa-info-circle mr-1"></i>Lưu ý đặc biệt từ Chuyên viên:</div>
+      <p class="text-blue-600 text-sm" id="q-note-text"></p>
+    </div>
+
+    <!-- AMORTIZATION TABLE -->
+    <div class="p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-vpgreen-DEFAULT flex items-center gap-2">
+          <i class="fas fa-table text-vpgold"></i>
+          Lịch Trả Nợ Chi tiết Hàng tháng
+        </h2>
+
+        <!-- Export Buttons -->
+        <div class="flex gap-2 no-print">
+          <button id="export-pdf-btn" class="btn-green text-sm py-2 px-3" title="Xuất PDF">
+            <i class="fas fa-file-pdf"></i> PDF
+          </button>
+          <button id="export-excel-btn" class="btn-outline-gold text-sm py-2 px-3" title="Xuất Excel">
+            <i class="fas fa-file-excel"></i> Excel
+          </button>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="flex gap-4 flex-wrap mb-4 text-xs text-gray-500">
+        <div class="flex items-center gap-1.5">
+          <div class="w-3 h-3 rounded bg-vpgold/30"></div>
+          <span>Tháng chuyển sang lãi suất sau ưu đãi</span>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="amortization-table" id="amortization-table">
+          <thead>
+            <tr>
+              <th style="text-align:center;width:48px;">Kỳ</th>
+              <th style="text-align:left;width:80px;">Tháng</th>
+              <th>Dư nợ đầu kỳ</th>
+              <th>Gốc phải trả</th>
+              <th>Lãi phải trả</th>
+              <th>Tổng trả</th>
+              <th>Dư nợ cuối kỳ</th>
+              <th>Lãi suất</th>
+            </tr>
+          </thead>
+          <tbody id="amortization-body">
+            <!-- Filled by JS -->
+          </tbody>
+          <tfoot id="amortization-footer">
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Terms & Disclaimer -->
+    <div class="px-6 pb-6">
+      <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs text-gray-500 leading-relaxed">
+        <p class="font-semibold text-gray-600 mb-1">⚠️ Lưu ý quan trọng:</p>
+        <ul class="list-disc list-inside space-y-1">
+          <li>Lịch trả nợ này <strong>chỉ mang tính tham khảo</strong>, được tính theo phương pháp dư nợ giảm dần với kỳ hạn gốc đều nhau.</li>
+          <li>Lãi suất sau ưu đãi có thể thay đổi theo chính sách VPBank và biến động thị trường.</li>
+          <li>Số tiền thực tế có thể có sai lệch nhỏ do làm tròn số.</li>
+          <li>Báo giá này có hiệu lực trong vòng <strong>30 ngày</strong> kể từ ngày tạo.</li>
+        </ul>
+        <p class="mt-2">Để được tư vấn chính xác, vui lòng liên hệ: <strong>Nguyễn Văn Bẩy – 0876.680.001 | Baynv@vpbank.com.vn</strong></p>
+      </div>
+
+      <!-- Signature -->
+      <div class="flex justify-between items-end mt-6 pt-4 border-t border-gray-100">
+        <div class="text-xs text-gray-400">
+          <div>Tạo bởi: VPBank SME Portal</div>
+          <div id="q-created-date">Ngày:  <span></span></div>
+          <div>smevpbank.vn</div>
+        </div>
+        <div class="text-center">
+          <div class="w-32 border-b border-gray-300 mb-1"></div>
+          <div class="text-xs text-gray-500">Chuyên viên Nguyễn Văn Bẩy</div>
+          <div class="text-xs text-gray-400">VPBank – Chi nhánh Tây Ninh</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Error state -->
+<div id="quote-error" class="hidden max-w-lg mx-auto text-center py-20 px-4">
+  <div class="text-6xl mb-4">🔗</div>
+  <h2 class="text-2xl font-bold text-vpgreen-DEFAULT mb-2">Không tìm thấy dữ liệu báo giá</h2>
+  <p class="text-gray-500 mb-6">Link báo giá không hợp lệ hoặc đã hết hạn. Vui lòng liên hệ chuyên viên để nhận link mới.</p>
+  <a href="index.html" class="btn-gold">
+    <i class="fas fa-home"></i> Về trang chủ
+  </a>
+  <div class="mt-8 p-4 bg-vpgreen-DEFAULT/5 rounded-xl text-sm text-gray-600">
+    <strong>Demo:</strong> Truy cập trang <a href="index.html" class="text-vpgreen-bright">tạo báo giá</a> → Nhập thông tin → Nhấn "Tạo Link Báo giá"
+  </div>
+</div>
+
+<script src="quote.js"></script>
+</body>
+</html>
